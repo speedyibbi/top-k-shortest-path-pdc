@@ -14,18 +14,21 @@ ________________________________________________________________________________
 ______________________________________________________________________________________________
 */
 
-#include <iostream>
-#include <string.h>
+
 #include "Header.h"
-using namespace std;
+
 
 // Declare Matrix
-int** distanceMatrix;
+int** distanceMatrix; 
 
 int main(){
 
     // Load Data From File
-    string fileName = "/Datasets/Email-Enron.txt";
-    load_data_in_matrix(distanceMatrix, file_name);
+    string fileName = "./Datasets/Email-EuAll.txt";
+    load_data_in_matrix(distanceMatrix, fileName);
+
+    // Print Matrix
+    // Output the adjacency matrix
+   
     
 }

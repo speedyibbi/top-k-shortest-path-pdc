@@ -1,5 +1,5 @@
 Unweighted
-# Nodes: 36692 Edges: 367662
+36692 367662
 0	1
 1	0
 1	2
