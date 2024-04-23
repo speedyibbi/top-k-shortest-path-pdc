@@ -15,8 +15,17 @@ ________________________________________________________________________________
 */
 
 #include <iostream>
+#include <string.h>
+#include "Header.h"
 using namespace std;
+
+// Declare Matrix
+int** distanceMatrix;
 
 int main(){
 
+    // Load Data From File
+    string fileName = "/Datasets/Email-Enron.txt";
+    load_data_in_matrix(distanceMatrix, file_name);
+    
 }

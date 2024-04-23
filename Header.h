@@ -13,4 +13,16 @@ ________________________________________________________________________________
 ______________________________________________________________________________________________
 ______________________________________________________________________________________________
 */
+#include <fstream>
+#include <vector>
+#include <sstream>
+
+void load_data_in_matrix(int** matrix, string fileName){
+     // Open the file
+    ifstream infile(fileName);
+    if (!infile) {
+        cerr << "Error opening file." << endl;
+        return;
+    }
+}
 
