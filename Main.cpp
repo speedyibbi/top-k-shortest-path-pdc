@@ -17,18 +17,16 @@ ________________________________________________________________________________
 
 #include "Header.h"
 
-
-// Declare Matrix
-int** distanceMatrix; 
-
 int main(){
 
     // Load Data From File
-    string fileName = "./Datasets/Email-EuAll.txt";
-    load_data_in_matrix(distanceMatrix, fileName);
+    //string fileName = "./Datasets/Email-Enron.txt";
+    //string fileName = "./Datasets/Email-EuAll.txt";
+    //string fileName = "./Datasets/classic-who.csv";
+    //string fileName = "./Datasets/doctorwho.csv";
+    //string fileName = "./Datasets/new-who.csv";
 
-    // Print Matrix
-    // Output the adjacency matrix
-   
-    
+    Graph* graph =  loaddataInMatrix(fileName);
+    graph->printLastList();
+
 }
