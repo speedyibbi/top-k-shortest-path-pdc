@@ -139,20 +139,19 @@ vector<vector<string>> kShortestPaths(const map<string, vector<Edge>>& adjList, 
 
 int main() {
     // Read dataset into adjacency list
-    // Load Data From File
-    string fileName = "./Datasets/classic-who.csv";
+    string fileName = "./Datasets/Email-Enron.txt";
     // string fileName = "./Datasets/Email-EuAll.txt";
     // string fileName = "./Datasets/classic-who.csv";
     // string fileName = "./Datasets/doctorwho.csv";
     // string fileName = "./Datasets/new-who.csv";
 
-    auto adjList = ReadFile(fileName, true);
+    auto adjList = ReadFile(fileName, false);
     // auto adjList = ReadFile(fileName, true);
     //PrintList(adjList);
     // // Example usage: Find the 3 shortest paths from "A" to "D"
-    string source = "Ace";
-    string target = "Ben Jackson";
-    int k = 5;
+    string source = "0";
+    string target = "21";
+    int k = 1;
     vector<vector<string>> shortestPaths = kShortestPaths(adjList, source, target, k);
 
     // Output shortest paths
