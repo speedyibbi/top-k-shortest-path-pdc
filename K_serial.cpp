@@ -1,128 +1,162 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
-#include <unordered_map>
-#include <string>
+#include <map>
 #include <queue>
-#include <sstream>
 #include <limits>
+#include <sstream>
+#include <algorithm>
+#include <set>
 
+#include "header.h"
 using namespace std;
 
-// Structure to represent an edge
-struct Edge {
-    int to;
-    int weight;
-    Edge(int t, int w) : to(t), weight(w) {}
+// Comparator for min heap based on edge weight
+struct CompareEdges {
+    bool operator()(const pair<int, string>& a, const pair<int, string>& b) {
+        return a.first > b.first;
+    }
 };
 
-// Function to read dataset 1 and create a distance matrix
-void readDataset1(const string& filename, vector<vector<Edge>>& graph, unordered_map<string, int>& nodeIndices) {
-    ifstream file(filename);
-    if (!file.is_open()) {
-        cerr << "Error opening file: " << filename << endl;
-        return;
+// Dijkstra's algorithm to find shortest paths from source to all nodes
+map<string, int> dijkstra(const map<string, vector<Edge>>& adjList, const string& source) {
+    map<string, int> distance;
+    priority_queue<pair<int, string>, vector<pair<int, string>>, CompareEdges> pq;
+
+    // Initialize distances
+    for (const auto& pair : adjList) {
+        distance[pair.first] = numeric_limits<int>::max();
     }
+    distance[source] = 0;
 
-    string line;
-    while (getline(file, line)) {
-        if (line.empty()) continue;
-        stringstream ss(line);
-        string source, target, type;
-        int weight;
-        ss >> source >> target >> weight >> type;
+    pq.push({0, source});
 
-        if (nodeIndices.find(source) == nodeIndices.end()) {
-            nodeIndices[source] = nodeIndices.size();
-            graph.push_back(vector<Edge>());
-        }
-        if (nodeIndices.find(target) == nodeIndices.end()) {
-            nodeIndices[target] = nodeIndices.size();
-            graph.push_back(vector<Edge>());
-        }
-
-        int sourceIdx = nodeIndices[source];
-        int targetIdx = nodeIndices[target];
-
-        graph[sourceIdx].push_back(Edge(targetIdx, weight));
-        graph[targetIdx].push_back(Edge(sourceIdx, weight)); // For undirected graph
-    }
-
-    file.close();
-}
-
-// Function to read dataset 2 and create a distance matrix
-void readDataset2(const string& filename, vector<vector<Edge>>& graph) {
-    ifstream file(filename);
-    if (!file.is_open()) {
-        cerr << "Error opening file: " << filename << endl;
-        return;
-    }
-
-    string line;
-    while (getline(file, line)) {
-        if (line.empty()) continue;
-        stringstream ss(line);
-        int from, to;
-        ss >> from >> to;
-
-        if (from >= graph.size()) graph.resize(from + 1);
-        if (to >= graph.size()) graph.resize(to + 1);
-
-        graph[from].push_back(Edge(to, 1));
-        graph[to].push_back(Edge(from, 1)); // For undirected graph
-    }
-
-    file.close();
-}
-
-// Dijkstra's algorithm to find the k shortest paths
-vector<vector<int>> kShortestPaths(const vector<vector<Edge>>& graph, int source, int k) {
-    int n = graph.size();
-    vector<vector<int>> shortestPaths;
-
-    priority_queue<pair<int, vector<int>>, vector<pair<int, vector<int>>>, greater<pair<int, vector<int>>>> pq;
-    pq.push({0, {source}});
-
-    while (!pq.empty() && shortestPaths.size() < k) {
-        auto [cost, path] = pq.top();
+    while (!pq.empty()) {
+        auto [dist, node] = pq.top();
         pq.pop();
-        int u = path.back();
 
-        if (shortestPaths.empty() || cost != shortestPaths.back().back()) {
-            shortestPaths.push_back(path);
-        }
+        if (dist > distance[node]) continue;
 
-        if (shortestPaths.size() == k) break;
-
-        for (const auto& edge : graph[u]) {
-            int v = edge.to;
-            vector<int> newPath = path;
-            newPath.push_back(v);
-            pq.push({cost + edge.weight, newPath});
+        for (const auto& edge : adjList.at(node)) {
+            int new_dist = dist + edge.weight;
+            if (new_dist < distance[edge.target]) {
+                distance[edge.target] = new_dist;
+                pq.push({new_dist, edge.target});
+            }
         }
     }
 
-    return shortestPaths;
+    return distance;
+}
+
+// // Function to find k shortest paths using Dijkstra's algorithm
+// vector<vector<string>> kShortestPaths(const map<string, vector<Edge>>& adjList, const string& source, const string& target, int k) {
+//     map<string, vector<vector<string>>> paths;
+//     vector<vector<string>> result;
+
+//     // Find shortest path from source to all nodes
+//     map<string, int> distances = dijkstra(adjList, source);
+
+//     // Initialize the heap with source node and its distance
+//     priority_queue<pair<int, vector<string>>, vector<pair<int, vector<string>>>, greater<pair<int, vector<string>>>> pq;
+//     pq.push({distances[target], {target}});
+
+//     // Loop until k shortest paths are found
+//     while (!pq.empty() && result.size() < k) {
+//         auto [dist, path] = pq.top();
+//         pq.pop();
+
+//         string current_node = path.back();
+//         if (current_node == source) {
+//             reverse(path.begin(), path.end());
+//             result.push_back(path);
+//         }
+
+//         for (const auto& edge : adjList.at(current_node)) {
+//             if (distances[edge.target] < distances[current_node]) {
+//                 vector<string> new_path = path;
+//                 new_path.push_back(edge.target);
+//                 pq.push({distances[edge.target], new_path});
+//             }
+//         }
+//     }
+
+//     return result;
+// }
+
+// Function to find k shortest paths using Dijkstra's algorithm
+vector<vector<string>> kShortestPaths(const map<string, vector<Edge>>& adjList, const string& source, const string& target, int k) {
+    map<string, vector<vector<string>>> paths;
+    vector<vector<string>> result;
+
+    // Find shortest path from source to all nodes
+    map<string, int> distances = dijkstra(adjList, source);
+
+    // Initialize visited set to keep track of visited nodes
+    set<string> visited;
+
+    // Initialize the heap with source node and its distance
+    priority_queue<pair<int, vector<string>>, vector<pair<int, vector<string>>>, greater<pair<int, vector<string>>>> pq;
+    pq.push({distances[target], {target}});
+
+    // Loop until k shortest paths are found
+    while (!pq.empty() && result.size() < k) {
+        auto [dist, path] = pq.top();
+        pq.pop();
+
+        string current_node = path.back();
+
+        // Skip if the current node has been visited earlier
+        if (visited.count(current_node)) {
+            continue;
+        }
+
+        // Mark the current node as visited
+        visited.insert(current_node);
+
+        // If current node is same as source node, it means we have found a path
+        // In such case, we add it to the result and continue to find next path
+        if (current_node == source) {
+            reverse(path.begin(), path.end());
+            result.push_back(path);
+            continue;
+        }
+
+        // Expand the current node and add its neighbors to the priority queue
+        for (const auto& edge : adjList.at(current_node)) {
+            // Skip the edge if the target node has been visited earlier
+            if (visited.count(edge.target)) {
+                continue;
+            }
+            vector<string> new_path = path;
+            new_path.push_back(edge.target);
+            pq.push({distances[edge.target], new_path});
+        }
+    }
+
+    return result;
 }
 
 int main() {
-    // Dataset 1
-    // vector<vector<Edge>> graph1;
-    // unordered_map<string, int> nodeIndices1;
-    // readDataset1("./Datasets/doctorwho.csv", graph1, nodeIndices1);
+    // Read dataset into adjacency list
+    // Load Data From File
+    string fileName = "./Datasets/classic-who.csv";
+    // string fileName = "./Datasets/Email-EuAll.txt";
+    // string fileName = "./Datasets/classic-who.csv";
+    // string fileName = "./Datasets/doctorwho.csv";
+    // string fileName = "./Datasets/new-who.csv";
 
-    // Dataset 2
-    vector<vector<Edge>> graph2;
-    readDataset2("./Datasets/Email-Enron.txt", graph2);
-
-    // Example usage: Find the 3 shortest paths from node 0
-    int sourceNode = 0;
-    int k = 3;
-    vector<vector<int>> shortestPaths = kShortestPaths(graph2, sourceNode, k);
+    auto adjList = ReadFile(fileName, true);
+    // auto adjList = ReadFile(fileName, true);
+    //PrintList(adjList);
+    // // Example usage: Find the 3 shortest paths from "A" to "D"
+    string source = "Ace";
+    string target = "Ben Jackson";
+    int k = 5;
+    vector<vector<string>> shortestPaths = kShortestPaths(adjList, source, target, k);
 
     // Output shortest paths
-    cout << "Shortest Paths from node " << sourceNode << ":" << endl;
+    cout << "Shortest Paths from " << source << " to " << target << ":" << endl;
     for (int i = 0; i < shortestPaths.size(); ++i) {
         cout << "Path " << i+1 << ": ";
         for (int j = 0; j < shortestPaths[i].size(); ++j) {
