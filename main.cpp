@@ -2,7 +2,7 @@
 ______________________________________________________________________________________________
 ______________________________________________________________________________________________
 
-                         MAIN FILE                        
+                                MAIN FILE                        
     PDC PROJECT
     Section: CS-Z
     
@@ -14,17 +14,19 @@ ________________________________________________________________________________
 ______________________________________________________________________________________________
 */
 
-
 #include "header.h"
 
 int main() {
     // Load Data From File
-    // string fileName = "./Datasets/Email-Enron.txt";
+    string fileName = "./Datasets/Email-Enron.txt";
     // string fileName = "./Datasets/Email-EuAll.txt";
     // string fileName = "./Datasets/classic-who.csv";
     // string fileName = "./Datasets/doctorwho.csv";
     // string fileName = "./Datasets/new-who.csv";
 
-    // Graph* graph =  loaddataInMatrix(fileName);
-    // graph->printLastList();
+    auto adjList = ReadFile(fileName, false);
+    // auto adjList = ReadFile(fileName, true);
+    PrintList(adjList);
+
+    return 0;
 }
