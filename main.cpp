@@ -17,6 +17,7 @@ ________________________________________________________________________________
 #include <iostream>
 #include <chrono>
 #include <mpi.h>
+#include <cstring>
 
 #include "header.h"
 
@@ -117,12 +118,33 @@ int main(int argc, char *argv[]) {
             return 0;
     }
 
+    vector<pair<string, string>> randomPairs;
+
+    // Initialize in Master
+    char* srcAll[10];
+    char* dstAll[10];
+    int srCount[10];
+    int dsCount[10];
+
+    double sAvg;
+
+
     // Generate 10 Random Pair of Nodes
     if (rank == 0){
 
         cout <<"\n\n**************** SERIAL EXECUTION *****************\n";
         cout <<"**************** Master Chooses 10 Random Nodes *****************\n";
-        vector<pair<string, string>> randomPairs = GenerateRandomPairs(adjacencyList, 10);
+        // Send these pairs using OpenMp to remaining processes later
+        randomPairs = GenerateRandomPairs(adjacencyList, 10);
+        for (int i = 0; i < 10; ++i) {
+            srcAll[i] = new char[randomPairs[i].first.size() + 1];
+            strcpy(srcAll[i], randomPairs[i].first.c_str());
+            srCount[i] = randomPairs[i].first.size() + 1;
+
+            dstAll[i] = new char[randomPairs[i].second.size() + 1];
+            strcpy(dstAll[i], randomPairs[i].second.c_str());
+            dsCount[i] = randomPairs[i].second.size() + 1;
+        }
 
         // Output the random pair of Nodes generated
     
@@ -143,7 +165,6 @@ int main(int argc, char *argv[]) {
         int idx = 1;
         vector<double> iterationTime;
         for (const auto& pair : randomPairs) {
-            cout<<"__________________________________________________\n";
             cout << "*********** Running for Node "<< idx++ << " *************\n";
             auto startTime = chrono::high_resolution_clock::now();
             vector<vector<string>> kPaths = YenAlgorithm(adjacencyList, pair.first, pair.second, k, false);
@@ -168,17 +189,37 @@ int main(int argc, char *argv[]) {
         for (double time : iterationTime) {
             sum += time;
         }
-        double averageTime = sum / iterationTime.size();
+        sAvg = sum / iterationTime.size();
         cout<<"\n__________________________________________________\n";
         cout<<"__________________________________________________\n";
-        cout << "\nAverage Serial Time (10 random nodes) for K-Shortest Path: " << averageTime << " milliseconds\n";
+        cout << "\nAverage Serial Time (10 random nodes) for K-Shortest Path: " << sAvg << " milliseconds\n";
         cout<<"__________________________________________________\n";
         cout<<"__________________________________________________\n";
         
     }
+
     // All Pocesses wait at barrier
     MPI_Barrier(MPI_COMM_WORLD);
-    cout<< "Process "<<rank<<  " moving from Barrier\n";
+
+
+    // Local Random Pairs of each Process
+    char* source = new char[100]; 
+    char* destination = new char[100];
+    if(rank == 0){
+        source = srcAll[0];
+        destination = dstAll[0];
+        for(int i = 1; i<10;i++){
+            MPI_Send(srcAll[i], srCount[i] , MPI_CHAR, i, 5, MPI_COMM_WORLD);
+            MPI_Send(dstAll[i], dsCount[i] , MPI_CHAR, i, 4, MPI_COMM_WORLD);
+        }
+
+        cout <<"\n\n**************** PARALLEL EXECUTION *****************\n";
+    }
+    else{
+        MPI_Recv(source, 100, MPI_CHAR, 0, 5, MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+        MPI_Recv(destination, 100, MPI_CHAR, 0, 4, MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+    }
+    
 /*
 ______________________________________________________________________________________________
 ______________________________________________________________________________________________
@@ -189,7 +230,54 @@ ________________________________________________________________________________
 */
 
     
+    auto startTime = chrono::high_resolution_clock::now();
+    vector<vector<string>> kPaths = YenAlgorithm(adjacencyList, source, destination, k, true);
+    auto endTime = chrono::high_resolution_clock::now();
+    auto duration = chrono::duration_cast<chrono::milliseconds>(endTime - startTime);
 
+    cout << "Paths Found: \n";
+    for (auto& path : kPaths) {
+        for (string& node : path) {
+            cout << node << " -> ";
+        }
+        cout << "end" << endl;
+    }
+    cout << "Time taken by Process "<< rank <<": " << duration.count() << " milliseconds\n";
+    cout<<"__________________________________________________\n";
+
+    // Collect all the time in master for computation
+    long long pTime[10];
+    double pAvg;
+    if(rank == 0){
+        pTime[0] = duration.count();
+        for(int i = 1; i <numProcesses; i++){
+
+            MPI_Recv(&pTime[i], 1, MPI_LONG_LONG, i, 3, MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+        
+        }
+    }
+    else{
+        long long t = duration.count();
+        MPI_Send(&t, 1, MPI_LONG_LONG, 0, 3, MPI_COMM_WORLD);
+    }
+
+    // All Pocesses wait at barrier
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    if(rank == 0){
+
+        double sum = 0;
+        for (int i = 0; i<10; i++) {
+            sum += pTime[i];
+        }
+        pAvg = sum / 10;
+        cout<<"\n__________________________________________________\n";
+        cout<<"__________________________________________________\n";
+        cout << "\nAverage Parallel Time (10 random nodes) for K-Shortest Path: " << pAvg << " milliseconds\n";
+        cout<<"__________________________________________________\n";
+        cout<<"__________________________________________________\n";
+
+    }
 
 
 /*
@@ -200,6 +288,22 @@ ________________________________________________________________________________
 ______________________________________________________________________________________________
 ______________________________________________________________________________________________
 */
+
+
+    if(rank == 0){
+        double speedup = sAvg/pAvg;
+        cout<<"**************************************************\n";
+        cout<<"**************************************************\n";
+        cout << "\nSPEED-UP ACHIEVED: " << speedup << "\n";
+        cout<<"**************************************************\n";
+        cout<<"**************************************************\n";
+
+    for (int i = 0; i < 10; ++i) {
+            delete srcAll[i];
+            delete dstAll[i];
+        }
+    }
+    
 
     MPI_Finalize();
 
