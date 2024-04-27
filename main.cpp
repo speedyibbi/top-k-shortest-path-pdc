@@ -16,28 +16,46 @@ ________________________________________________________________________________
 
 #include <iostream>
 #include <chrono>
+#include <mpi.h>
 
 #include "header.h"
 
 using namespace std;
 
-int main() {
+int main(int argc, char *argv[]) {
     // Initialize Test File Name Variables
     string fileNames[] = {"./Datasets/Email-Enron.txt","./Datasets/Email-EuAll.txt",
                           "./Datasets/classic-who.csv", "./Datasets/doctorwho.csv",
                           "./Datasets/new-who.csv"};
+
+    // Innitialize MPI Environment
+    MPI_Init(&argc, &argv);
+
+    int rank, numProcesses;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &numProcesses); 
+
+    if(numProcesses != 10){
+        cout<<"Please Run the Code with 10 Processes...\n";
+        MPI_Finalize();
+        return 0;
+    }
+
+    // Declare Adjacency List  for each
+    map<string, vector<Edge>> adjacencyList;
+
 /*
     ______________________________________________________________________________________________
     ______________________________________________________________________________________________
 
-                                   MAIN EXECUTION LOOP
+                                   MAIN EXECUTION 
     ______________________________________________________________________________________________
     ______________________________________________________________________________________________
 */
-    while(true){
-
-        // Ask user to select a test file
-        int choice;
+    int choice;
+    int k = -1;
+    if(rank == 0){
+          // Ask user to select a test file
         cout<<"__________________________________________________\n";
         cout<<"__________________________________________________\n";
         cout <<"\nChoose a File: \n\n";
@@ -48,51 +66,77 @@ int main() {
         cout<<"\nYour Choice: ";
         cin >> choice;
 
-        // Declare Adjacency List Variable
-        map<string, vector<Edge>> adjacencyList;
-
-        switch(choice){
-            // Reading Data From File in Adjacency List
-            case 1 ... 5:
-                cout <<"\n\n**************** Fetching Data From File *****************\n";
-                if(choice == 1 || choice == 2){
-                    adjacencyList = ReadFile(fileNames[choice-1], false);
-                }
-                else{
-                     adjacencyList = ReadFile(fileNames[choice-1], true);
-                }
-                
-            break;
-            default:
-                cout <<"Wrong Option Chosen :(\n I see you want to Exit Code... Bye then"<<endl;
-                return 0;
+        // Send Index over MPI
+        for(int i = 1; i <numProcesses; i++){
+            MPI_Send(&choice, 1, MPI_INT, i, 20, MPI_COMM_WORLD);
         }
 
-        // Generate 10 Random Pair of Nodes
-        cout <<"\n\n**************** Choosing 10 Random Nodes *****************\n";
+        // Get K value from user in Master
+        cout << "\nChoose Value of K (for k shortest path): ";
+        cin >> k;
+        cout<<"\n__________________________________________________\n";
+        if (k <= 0){
+            cout <<"\nBad Value :(\nExiting...\n";
+            MPI_Finalize();
+            return 0;
+        }
+
+        // Send Value of K over MPI
+        for(int i = 1; i <numProcesses; i++){
+            MPI_Send(&k, 1, MPI_INT, i, 10, MPI_COMM_WORLD);
+        }
+
+    }
+    else
+    {
+        MPI_Recv(&choice, 1, MPI_INT, 0, 20, MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+        MPI_Recv(&k, 1, MPI_INT, 0, 10, MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+    }
+  
+    // All Processes Load Data From File
+    switch(choice){
+        // Reading Data From File in Adjacency List
+        case 1 ... 5:
+            if (rank == 0){
+                 cout <<"\n\n**************** Fetching Data From File *****************\n";
+            }
+           
+            if(choice == 1 || choice == 2){
+                adjacencyList = ReadFile(fileNames[choice-1], false);
+            }
+            else{
+                adjacencyList = ReadFile(fileNames[choice-1], true);
+            }
+            
+        break;
+        default:
+            if (rank == 0){
+                cout <<"Wrong Option Chosen :(\n I see you want to Exit Code... Bye then"<<endl;
+            }
+            MPI_Finalize();
+            return 0;
+    }
+
+    // Generate 10 Random Pair of Nodes
+    if (rank == 0){
+
+        cout <<"\n\n**************** SERIAL EXECUTION *****************\n";
+        cout <<"**************** Master Chooses 10 Random Nodes *****************\n";
         vector<pair<string, string>> randomPairs = GenerateRandomPairs(adjacencyList, 10);
 
         // Output the random pair of Nodes generated
-       
+    
         cout << "\nSelected Pair of Nodes: \n\n" << endl;
         for (const auto& pair : randomPairs) {
             cout << pair.first << " -> " << pair.second << endl;
         }
         cout<<"\n__________________________________________________\n";
 
-        int k = -1;
-        cout << "\nChoose Value of K (for k shortest path): ";
-        cin >> k;
-        cout<<"\n\n__________________________________________________\n";
-        if (k <= 0){
-            cout <<"\nBad Value :(\nExiting...\n";
-            return 0;
-        }
 /*
     ______________________________________________________________________________________________
     ______________________________________________________________________________________________
 
-                                   SERIAL EXECUTION FOR BENCHMARK
+                                SERIAL EXECUTION FOR BENCHMARK
     ______________________________________________________________________________________________
     ______________________________________________________________________________________________
 */
@@ -130,31 +174,34 @@ int main() {
         cout << "\nAverage Serial Time (10 random nodes) for K-Shortest Path: " << averageTime << " milliseconds\n";
         cout<<"__________________________________________________\n";
         cout<<"__________________________________________________\n";
-
-/*
-    ______________________________________________________________________________________________
-    ______________________________________________________________________________________________
-
-                                   PARALLEL EXECUTION 
-    ______________________________________________________________________________________________
-    ______________________________________________________________________________________________
-*/
-
         
+    }
+    // All Pocesses wait at barrier
+    MPI_Barrier(MPI_COMM_WORLD);
+    cout<< "Process "<<rank<<  " moving from Barrier\n";
+/*
+______________________________________________________________________________________________
+______________________________________________________________________________________________
+
+                                PARALLEL EXECUTION 
+______________________________________________________________________________________________
+______________________________________________________________________________________________
+*/
+
+    
 
 
 
 /*
-    ______________________________________________________________________________________________
-    ______________________________________________________________________________________________
+______________________________________________________________________________________________
+______________________________________________________________________________________________
 
-                                   TIME AND SPEEDUP ESTIMATION
-    ______________________________________________________________________________________________
-    ______________________________________________________________________________________________
+                                TIME AND SPEEDUP ESTIMATION
+______________________________________________________________________________________________
+______________________________________________________________________________________________
 */
 
-        break;
-    }
-    
+    MPI_Finalize();
+
     return 0;
 }
