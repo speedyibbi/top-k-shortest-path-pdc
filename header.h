@@ -27,6 +27,8 @@ ________________________________________________________________________________
 #include <utility>
 #include <algorithm>
 #include <omp.h>
+#include <random>
+//#include <mpi.h>
 
 using namespace std;
 
@@ -101,6 +103,41 @@ map<string, vector<Edge>> ReadUnweightedFile(const string& filename) {
         adjList[target].push_back({source, 1});
     }
     return adjList;
+}
+
+// Function that returns randomly generated pair of nodes from list
+vector<pair<string, string>> GenerateRandomPairs(const map<string, vector<Edge>>& adjacencyList, int numPairs) {
+   
+    vector<pair<string, string>> randomPairs;
+    // Extract node keys from the adjacency list
+    vector<string> nodes;
+    for (const auto& entry : adjacencyList) {
+        nodes.push_back(entry.first);
+    }
+
+    // Random number generator
+    random_device rd;
+    mt19937 gen(rd());
+
+    // Shuffle the node keys
+    shuffle(nodes.begin(), nodes.end(), gen);
+
+    // Generate random pairs
+    for (int i = 0; i < numPairs; ++i) {
+        // Randomly select source and destination nodes
+        uniform_int_distribution<int> dist(0, nodes.size() - 1);
+        int sourceIndex = dist(gen);
+        int destIndex = dist(gen);
+
+        // Make sure source and destination nodes are different
+        while (sourceIndex == destIndex) {
+            destIndex = dist(gen);
+        }
+
+        randomPairs.emplace_back(nodes[sourceIndex], nodes[destIndex]);
+    }
+
+    return randomPairs;
 }
 
 vector<string> Dijkstra(const map<string, vector<Edge>>& graph, const string& start, const string& end) {
