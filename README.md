@@ -15,7 +15,7 @@ mpiexec -n 10 -f machinefile ./a.out
 ```
 -  Replace machinefile with the path to your machine file containing the list of hosts.
 
-## On Cluster
+## On WSL
 
 ### Step 1: Install MPI Implementation
 
